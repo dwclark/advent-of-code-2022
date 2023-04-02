@@ -7,4 +7,5 @@
                             "cl-containers" "split-sequence")
   :components ((:file "src/utils")
                (:file "src/day-01" :depends-on ("src/utils"))
-               (:file "src/day-02" :depends-on ("src/utils"))))
+               (:file "src/day-02" :depends-on ("src/utils"))
+               (:file "src/day-03" :depends-on ("src/utils"))))
