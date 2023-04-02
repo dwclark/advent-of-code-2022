@@ -6,7 +6,6 @@
 
 (in-package :day-03)
 
-
 (defun char->priority (c)
   (if (lower-case-p c)
       (1+ (- (char-code c) (char-code #\a)))
