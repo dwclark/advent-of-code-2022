@@ -1,7 +1,7 @@
 (defpackage :utils
   (:use :cl)
-  (:export #:read-file #:read-day-file #:split-blank-lines #:read-blank-line-blocks
-           #:*input-directory* 
+  (:export #:read-file #:read-day-file #:split-blank-lines #:read-blank-line-blocks #:day-file-name
+           #:*input-directory* #:read-lists-of-symbols
            #:bit-vector->integer #:integer->bit-vector #:power-set))
 
 (in-package :utils)
@@ -73,6 +73,11 @@
 
 (defun read-day-file (day)
   (read-file (concatenate 'string *input-directory* "day-" day ".txt")))
+
+(defun read-lists-of-symbols (day)
+  (mapcar #'(lambda (line)
+              (read-from-string (concatenate 'string "(" line ")")))
+          (read-day-file day)))
 
 (defun read-blank-line-blocks (day)
   (let ((blocks nil)
