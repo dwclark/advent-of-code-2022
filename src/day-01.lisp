@@ -7,9 +7,10 @@
 (in-package :day-01)
 
 (defun ordered-sums ()
-  (flet ((sum-list (lst)
-           (reduce #'+ (mapcar #'parse-integer lst))))
-    (sort (mapcar #'sum-list (split-sequence "" (read-day-file "01") :test #'string=)) #'>)))
+  (let ((grouped-lists (split-sequence "" (read-day-file "01") :test #'string=)))
+    (flet ((sum-list (lst)
+             (reduce #'+ (mapcar #'parse-integer lst))))
+      (sort (mapcar #'sum-list grouped-lists)  #'>))))
 
 (defun part-1 ()
   (first (ordered-sums)))
