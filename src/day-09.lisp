@@ -20,25 +20,58 @@
 (defun add-visited (cell)
   (setf (gethash (copy-tree cell) *visited*) t))
 
-(defun fix-up (prev rope)
-  (if (not (touching-p (first rope) (second rope)))
-      (let ((new-prev (second rope))
-            (next-rope (cdr rope)))
-        (setf (second rope) prev)
-        (if (cdr next-rope)
-            (fix-up new-prev next-rope)
-            (add-visited (second rope))))))
+(defun row= (c1 c2)
+  (= (car c1) (car c2)))
+
+(defun row< (c1 c2)
+  (< (car c1) (car c2)))
+
+(defun row> (c1 c2)
+  (> (car c1) (car c2)))
+
+(defun col= (c1 c2)
+  (= (cdr c1) (cdr c2)))
+
+(defun col< (c1 c2)
+  (< (cdr c1) (cdr c2)))
+
+(defun col> (c1 c2)
+  (> (cdr c1) (cdr c2)))
+
+(defun fix-up (rope)
+  (let ((head (first rope))
+        (tail (second rope)))
+    (if (not (touching-p head tail))
+        (let ((to-add (cond ((row= head tail)
+                             (if (col< head tail) '(0 . -1) '(0 . 1)))
+                            
+                            ((col= head tail)
+                             (if (row< head tail) '(-1 . 0) '(1 . 0)))
+                            
+                            ((and (row< head tail) (col< head tail)) '(-1 . -1))
+                            
+                            ((and (row< head tail) (col> head tail)) '(-1 . 1))
+                            
+                            ((and (row> head tail) (col< head tail)) '(1 . -1))
+                            
+                            ((and (row> head tail) (col> head tail)) '(1 . 1))
+                            
+                            (t (error "bad condition")))))
+          (let ((next-rope (cdr rope))
+                (new-val (setf (second rope) (cons+ tail to-add))))
+            (if (cdr next-rope)
+                (fix-up next-rope)
+                (add-visited new-val)))))))
 
 (defun make-move (move rope)
   (dotimes (c (second move))
-    (let ((prev (first rope)))
-      (setf (first rope) (cons+ (first rope) (ecase (first move)
-                                               (r '(0 . 1))
-                                               (l '(0 . -1))
-                                               (u '(1 . 0))
-                                               (d '(-1 . 0)))))
-      (fix-up prev rope))))
- 
+    (setf (first rope) (cons+ (first rope) (ecase (first move)
+                                             (r '(0 . 1))
+                                             (l '(0 . -1))
+                                             (u '(1 . 0))
+                                             (d '(-1 . 0)))))
+    (fix-up rope)))
+
 (defun play-game (n)
   (let ((*step* 0)
         (*moves* (read-lists-of-symbols "09"))
@@ -46,8 +79,7 @@
         (rope (loop for i from 0 below n collecting (cons 0 0))))
     (add-visited (last rope))
     (dolist (move *moves*)
-      (make-move move rope)
-      (format t "~A. ~A~%" (incf *step*) rope))
+      (make-move move rope))
     (hash-table-count *visited*)))
 
 (defun part-1 ()
