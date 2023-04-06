@@ -2,7 +2,8 @@
   (:use :cl)
   (:export #:read-file #:read-day-file #:split-blank-lines #:read-blank-line-blocks #:day-file-name
            #:*input-directory* #:read-lists-of-symbols
-           #:bit-vector->integer #:integer->bit-vector #:power-set))
+           #:bit-vector->integer #:integer->bit-vector #:power-set
+           #:*to-add/8*))
 
 (in-package :utils)
 
