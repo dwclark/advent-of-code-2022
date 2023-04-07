@@ -19,21 +19,15 @@
 (defvar *screen* nil)
 
 (defun initial-screen ()
-  (make-array 6 :initial-contents (list (make-array 40 :element-type 'character :initial-element #\.)
-                                        (make-array 40 :element-type 'character :initial-element #\.)
-                                        (make-array 40 :element-type 'character :initial-element #\.)
-                                        (make-array 40 :element-type 'character :initial-element #\.)
-                                        (make-array 40 :element-type 'character :initial-element #\.)
-                                        (make-array 40 :element-type 'character :initial-element #\.))))
+  (make-array 6 :initial-contents (loop for i from 0 below 6
+                                        collect (make-array 40 :element-type 'character :initial-element #\.) into ret
+                                        finally (return ret))))
 
 (defun draw-pixel ()
-  (let* ((crt-row (floor (/ (1- *cycles*) 40)))
-         (crt-col (mod (1- *cycles*) 40))
-         (sprite-position *register*)
-         (sprite-low (1- sprite-position))
-         (sprite-high (1+ sprite-position)))
+  (let ((crt-row (floor (/ (1- *cycles*) 40)))
+        (crt-col (mod (1- *cycles*) 40)))
     
-    (if (<= sprite-low crt-col sprite-high) 
+    (if (<= (1- *register*) crt-col (1+ *register*)) 
         (setf (aref (aref *screen* crt-row) crt-col) #\#))))
   
 (defun cycle-clock ()
