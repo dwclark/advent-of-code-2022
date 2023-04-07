@@ -23,3 +23,7 @@ Run all of the above commands inside your common lisp environment. And your comm
 
 ## [Day 1](src/day-01.lisp) Put Title Here
 
+## [Day 10](src/day-10.lisp) I Hate Confusing Instructions
+
+Part 1 was fine. However, it took forever to figure out what part 2 was saying. While this may provide practice in reading ambiguous and poorly specified requirements, this is the least favorite part of my day job. This may be my least favorite type of AOC challenge.
+
