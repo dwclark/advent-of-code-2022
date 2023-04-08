@@ -37,3 +37,8 @@ Part 2 was using the [Chinese Remainder Theorem](https://en.wikipedia.org/wiki/C
 
 At the very least I should probably rename the `*residues*` variable...just as soon as I can figure out something better.
 
+## [Day 12](src/day-12.lisp) First Dijkstra of 2022
+
+First path-finding challenge of 2022. I initially tried using a normal priority queue and a visited set. Like always, I bungled it and switched to using a tracking map + Fibonacci heap. Anyway, straighforward use of Dijkstra's algorithm.
+
+**Addendum (same day)** I felt like I wussed out of using the normal Dijkstra's algorithm, with a visited queue and a priority queue. I went ahead and implemented it for this problem. So, when can you use the normal Dijkstra's algorithm? When you never have to revisit a position because there's no way that a revisit would give you a lower total path cost. This is only the case when each move costs the same amount. When does it pay to use an updatable priority queue? Whenever you may have to revisit a path because the total cost may be lower on a subsequent visit. This is almost always the case when you have multiple moving pieces. In this case you are really tracking total cost of board states, and there are several ways to arrive at the same board state (albeit with different costs).
