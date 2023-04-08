@@ -35,3 +35,5 @@ Part 1 is super easy if you are using lisp. Remove the `:` and `,` characters, a
 
 Part 2 was using the [Chinese Remainder Theorem](https://en.wikipedia.org/wiki/Chinese_remainder_theorem), a solution strategy that comes up semi-regularly. I ended up guessing that replacing the computed value with the mod of all the co-prime divisors multiplied together would get the job done, which it did. It sort of makes sense from the definition of the Chinese Remainder Theorem. However, at this point I should probably stop AOC for a little bit and attempt to understand why it worked. In any case, modular arithmetic is _stil_ confusing to me, and attempting to remedy that will probably pay dividends down the road.
 
+At the very least I should probably rename the `*residues*` variable...just as soon as I can figure out something better.
+
