@@ -27,3 +27,11 @@ Run all of the above commands inside your common lisp environment. And your comm
 
 Part 1 was fine. However, it took forever to figure out what part 2 was saying. While this may provide practice in reading ambiguous and poorly specified requirements, this is the least favorite part of my day job. This may be my least favorite type of AOC challenge.
 
+## [Day 10](src/day-10.lisp) Chinese Remainder Theorem
+
+There were two challenges for this day: 1) Parse the inputs to be able to produce the correct initial monkey states and 2) figure out how to keep the numbers from growing exponentially in part 2.
+
+Part 1 is super easy if you are using lisp. Remove the `:` and `,` characters, allow lisp to read them as symbols, then pick out the interesting parts from the lists of symbols. The only real tricky part is constructing the function for each monkey to compute. I ended up just using a dynamic variable and `eval`-ing a dynamically constructed expression. I originally thought a macro would get the job done. This however was dumb of me because macros run at compile time while the expression needed to be made at runtime (since we are parsing a file and all macros had already been run).
+
+Part 2 was using the [Chinese Remainder Theorem](https://en.wikipedia.org/wiki/Chinese_remainder_theorem), a solution strategy that comes up semi-regularly. I ended up guessing that replacing the computed value with the mod of all the co-prime divisors multiplied together would get the job done, which it did. It sort of makes sense from the definition of the Chinese Remainder Theorem. However, at this point I should probably stop AOC for a little bit and attempt to understand why it worked. In any case, modular arithmetic is _stil_ confusing to me, and attempting to remedy that will probably pay dividends down the road.
+
