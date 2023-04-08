@@ -27,7 +27,7 @@ Run all of the above commands inside your common lisp environment. And your comm
 
 Part 1 was fine. However, it took forever to figure out what part 2 was saying. While this may provide practice in reading ambiguous and poorly specified requirements, this is the least favorite part of my day job. This may be my least favorite type of AOC challenge.
 
-## [Day 10](src/day-10.lisp) Chinese Remainder Theorem
+## [Day 11](src/day-11.lisp) Chinese Remainder Theorem
 
 There were two challenges for this day: 1) Parse the inputs to be able to produce the correct initial monkey states and 2) figure out how to keep the numbers from growing exponentially in part 2.
 
