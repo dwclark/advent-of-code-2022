@@ -42,3 +42,9 @@ At the very least I should probably rename the `*residues*` variable...just as s
 First path-finding challenge of 2022. I initially tried using a normal priority queue and a visited set. Like always, I bungled it and switched to using a tracking map + Fibonacci heap. Anyway, straighforward use of Dijkstra's algorithm.
 
 **Addendum (same day)** I felt like I wussed out of using the normal Dijkstra's algorithm, with a visited queue and a priority queue. I went ahead and implemented it for this problem. So, when can you use the normal Dijkstra's algorithm? When you never have to revisit a position because there's no way that a revisit would give you a lower total path cost. This is only the case when each move costs the same amount. When does it pay to use an updatable priority queue? Whenever you may have to revisit a path because the total cost may be lower on a subsequent visit. This is almost always the case when you have multiple moving pieces. In this case you are really tracking total cost of board states, and there are several ways to arrive at the same board state (albeit with different costs).
+
+## [Day 13](src/day-13.lisp) Use Ternary Logic
+
+At first I tried a purely recursive approach with binary logic. Then I tried a mixed iterative/recursive approach with binary logic. Finally, I used the mixed iterative/recursive approach with ternary logic. It's shocking to me I still fail to see ternary logic problems at first, given successes I've had at work applying ternary logic uniformly.
+
+I liked the fact that I could use part-1 without any modifications in part-2, I just needed a translation layer to go from ternary to binary logic in order to use the standard lisp sequence functions.
