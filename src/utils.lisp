@@ -2,7 +2,7 @@
   (:use :cl)
   (:export #:read-file #:read-day-file #:split-blank-lines #:read-blank-line-blocks #:day-file-name
            #:*input-directory* #:read-lists-of-symbols
-           #:bit-vector->integer #:integer->bit-vector #:power-set
+           #:bit-vector->integer #:integer->bit-vector #:power-set #:range-overlap-p
            #:*to-add/8*))
 
 (in-package :utils)
@@ -135,3 +135,7 @@
              (setf (aref bitvec i) (rem num 2))
              (setf num (floor (/ num 2))))
         finally (return bitvec)))
+
+(defun range-overlap-p (one two)
+  (or (<= (car one) (car two) (cdr one))
+      (<= (car one) (cdr two) (cdr one))))

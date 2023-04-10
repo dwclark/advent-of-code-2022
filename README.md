@@ -48,3 +48,7 @@ First path-finding challenge of 2022. I initially tried using a normal priority 
 At first I tried a purely recursive approach with binary logic. Then I tried a mixed iterative/recursive approach with binary logic. Finally, I used the mixed iterative/recursive approach with ternary logic. It's shocking to me I still fail to see ternary logic problems at first, given successes I've had at work applying ternary logic uniformly.
 
 I liked the fact that I could use part-1 without any modifications in part-2, I just needed a translation layer to go from ternary to binary logic in order to use the standard lisp sequence functions.
+
+## [Day 15](src/day-13.lisp) You Have To Do The Math
+
+The numbers are too big here to just track things in a set/map and do counts at the end. For both parts you have to extract ranges of valid values. For part 1 I just did a loop to see if which x values were neither beacons nor in the ranges. For part 2 you have to coalesce the ranges row by row. If you have one range after coalescing, that can't be it. So if there are two ranges, then the non-overlapping value of those two ranges are the right answer, provided it's not also a beacon. Lots of fiddly math. It took me far too long to get the `coalese-ranges` code right. I kept trying to get a purely recursive one to work correctly, but writing an iterative/mutable turned out to be easier.
