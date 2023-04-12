@@ -79,6 +79,25 @@
           do (when (not (member next-valve visited :key #'car :test #'eq))
                (compute-scores (cons (list next-valve (+ open-minutes minutes cost-minutes)) visited))))))
 
+(defun compute-scores-two (visited)
+  (let* ((man-pos (or (find :man visited :key #'third) (list 'aa 1 :man)))
+         (elephant-pos (or (find :elephant visited :key #'third) (list 'aa 1 :elephant)))
+         (next-pos (if (<= (second man-pos) (second elephant-pos)) man-pos elephant-pos))
+
+         (valve (first next-pos))
+         (minutes (second next-pos))
+         (operator (third next-pos))
+         (open-minutes (if (= 1 minutes) 0 1)))
+    (when (or (<= *max-minutes* (second man-pos))
+              (<= *max-minutes* (second elephant-pos))
+              (= (length visited) *valve-count*))
+      (set-max-flow (remove-if (curry #'<= *max-minutes*) visited :key #'second))
+      (return-from compute-scores-two))
+    
+    (loop for next-valve being the hash-keys in (gethash valve *all-paths*) using (hash-value cost-minutes)
+          do (when (not (member next-valve visited :key #'first :test #'eq))
+               (compute-scores-two (cons (list next-valve (+ open-minutes minutes cost-minutes) operator) visited))))))
+
 (defun part-1 ()
   (let* ((*tunnels* (file->tunnels))
          (*valves->tunnels* (tunnels->hash-table))
@@ -99,6 +118,6 @@
          (*max-flow* 0)
          (*max-minutes* 26))
 
-    (compute-scores nil)
+    (compute-scores-two nil)
     *max-flow*))
 
