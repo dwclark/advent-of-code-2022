@@ -6,8 +6,6 @@
   (:import-from :metabang.cl-containers :priority-queue-on-container :set-container :enqueue :dequeue :find-item :insert-new-item :empty-p)
   (:export #:part-1 #:part-2))
 
-(declaim (optimize (debug 3)))
-
 (in-package :day-16)
 
 (defstruct tunnel valve rate leads-to)
@@ -106,7 +104,6 @@
          (*max-flow* 0)
          (*max-minutes* 30))
 
-    ;;(compute-scores 'aa nil 1)
     (compute-scores nil)
     *max-flow*))
 

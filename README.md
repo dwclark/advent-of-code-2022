@@ -52,3 +52,9 @@ I liked the fact that I could use part-1 without any modifications in part-2, I 
 ## [Day 15](src/day-13.lisp) You Have To Do The Math
 
 The numbers are too big here to just track things in a set/map and do counts at the end. For both parts you have to extract ranges of valid values. For part 1 I just did a loop to see if which x values were neither beacons nor in the ranges. For part 2 you have to coalesce the ranges row by row. If you have one range after coalescing, that can't be it. So if there are two ranges, then the non-overlapping value of those two ranges are the right answer, provided it's not also a beacon. Lots of fiddly math. It took me far too long to get the `coalese-ranges` code right. I kept trying to get a purely recursive one to work correctly, but writing an iterative/mutable turned out to be easier.
+
+## [Day 16](src/day-16.lisp) BFS, Then Try All The Paths
+
+First, use BFS to find the shortest paths between all of the nodes that have a valve with pressure to release. Then start at AA, try all the paths, recursively trying all of the paths from each of those nodes. Track current minutes and position in a visited list. When you are done, you have found the highest pressure release.
+
+Part 2 is slow, but it's almost identical to part 1. In this case, just track whether to move the man or the elephant next. Whoever has the lowest number of minutes is the next to move. It takes much longer because there's much fewer early terminations. Possibilities for improving are there. One improvement is to stop using lists for everything. All of that searching take a lot of time. Another would be to look for opportunities to cache things. 
