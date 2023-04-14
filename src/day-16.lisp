@@ -4,7 +4,10 @@
   (:import-from :cl-ppcre :do-register-groups)
   (:import-from :alexandria :rcurry :curry :hash-table-alist)
   (:import-from :metabang.cl-containers :priority-queue-on-container :set-container :enqueue :dequeue :find-item :insert-new-item :empty-p)
+  (:import-from :fare-memoization :define-memo-function)
   (:export #:part-1 #:part-2))
+
+(declaim (optimize (debug 3)))
 
 (in-package :day-16)
 
@@ -13,14 +16,10 @@
 (defparameter *max-minutes* 0)
 (defvar *tunnels* nil)
 (defvar *valves->tunnels* nil)
-(defvar *max-flow* 0)
 (defvar *all-paths* nil)
-(defvar *valve-count* 0)
 
-(defun compute-full-pressure (visited)
-  (flet ((compute (c)
-           (* (- *max-minutes* (second c)) (tunnel-rate (gethash (first c) *valves->tunnels*)))))
-    (reduce #'+ (mapcar #'compute visited))))
+(defun compute-pressure (valve minutes)
+  (* (tunnel-rate (gethash valve *valves->tunnels*)) (- *max-minutes* (1- minutes))))
 
 (defun line->tunnel (line)
   (do-register-groups ((#'intern src) (#'parse-integer rate) target) ("^Valve ([A-Z]+) has flow rate=(\\d+); tunnels? leads? to valves? (.+)$" line)
@@ -47,7 +46,7 @@
                     (tunnel (gethash current *valves->tunnels*)))
                (insert-new-item visited current)
                (if (not (zerop (tunnel-rate tunnel)))
-                   (setf (gethash current paths) distance))
+                   (setf (gethash current paths) (1+ distance))) ;account turn time in weighting
                (loop for valve in (tunnel-leads-to tunnel)
                      do (if (not (find-item visited valve))
                             (enqueue pq (cons valve (1+ distance))))))
@@ -60,61 +59,43 @@
              (setf (gethash valve all-paths) (compute-paths valve)))
         finally (return all-paths)))
 
-(defun set-max-flow (visited)
-  (setf *max-flow* (max *max-flow* (compute-full-pressure visited))))
-
-(defun compute-scores (visited)
-  (let* ((front (first visited))
-         (valve (if (null front) 'aa (first front)))
-         (minutes (if (null front) 1 (second front)))
-         (open-minutes (if (null front) 0 1)))
-    (when (or (<= *max-minutes* minutes)
-              (= (length visited) *valve-count*))
-      (set-max-flow visited)
-      (return-from compute-scores))
+(defun compute-scores (valve minutes remaining)
+  (flet ((compute-next (next)
+           (let* ((current-paths (gethash valve *all-paths*))
+                  (to-add (gethash next current-paths)))
+             (+ (compute-pressure valve minutes) (compute-scores next (+ to-add minutes) (remove next remaining))))))
     
-    (loop for next-valve being the hash-keys in (gethash valve *all-paths*) using (hash-value cost-minutes)
-          do (when (not (member next-valve visited :key #'car :test #'eq))
-               (compute-scores (cons (list next-valve (+ open-minutes minutes cost-minutes)) visited))))))
+    (cond ((<= *max-minutes* minutes) 0) ;ran out of time
+          ((null remaining) (compute-pressure valve minutes)) ;last one to open
+          (t (apply #'max (mapcar #'compute-next remaining))))))
 
-(defun compute-scores-two (visited)
-  (let* ((man-pos (or (find :man visited :key #'third) (list 'aa 1 :man)))
-         (elephant-pos (or (find :elephant visited :key #'third) (list 'aa 1 :elephant)))
-         (next-pos (if (<= (second man-pos) (second elephant-pos)) man-pos elephant-pos))
-
-         (valve (first next-pos))
-         (minutes (second next-pos))
-         (operator (third next-pos))
-         (open-minutes (if (= 1 minutes) 0 1)))
-    (when (or (<= *max-minutes* (second man-pos))
-              (<= *max-minutes* (second elephant-pos))
-              (= (length visited) *valve-count*))
-      (set-max-flow (remove-if (curry #'<= *max-minutes*) visited :key #'second))
-      (return-from compute-scores-two))
+(defun compute-scores-2 (mover m-valve m-minutes e-valve e-minutes remaining)
+  (let ((valve (if (eq :man mover) m-valve e-valve))
+        (minutes (if (eq :man mover) m-minutes e-minutes)))
+    (flet ((compute-next (next)
+             (let* ((next-mover (if (<= m-minutes e-minutes) :man :elephant))
+                    (mover-paths (gethash (if (eq :man next-mover) m-valve e-valve) *all-paths*))
+                    (to-add (gethash next mover-paths)))
+               (+ (compute-pressure valve minutes)
+                  (if (eq :man next-mover)
+                      (compute-scores-2 next-mover next (+ m-minutes to-add) e-valve e-minutes (remove next remaining))
+                      (compute-scores-2 next-mover m-valve m-minutes next (+ e-minutes to-add) (remove next remaining)))))))
+                  
     
-    (loop for next-valve being the hash-keys in (gethash valve *all-paths*) using (hash-value cost-minutes)
-          do (when (not (member next-valve visited :key #'first :test #'eq))
-               (compute-scores-two (cons (list next-valve (+ open-minutes minutes cost-minutes) operator) visited))))))
+      (cond ((<= *max-minutes* minutes) 0) ;ran out of time
+            ((null remaining) (compute-pressure valve minutes)) ;last one to open
+            (t (apply #'max (mapcar #'compute-next remaining)))))))
+
+(defun play-game (time func)
+  (let* ((*tunnels* (file->tunnels))
+         (*valves->tunnels* (tunnels->hash-table))
+         (*all-paths* (compute-all-paths))
+         (remaining (mapcar #'tunnel-valve (remove-if #'(lambda (tunnel) (zerop (tunnel-rate tunnel))) *tunnels*)))
+         (*max-minutes* time))
+    (funcall func remaining)))
 
 (defun part-1 ()
-  (let* ((*tunnels* (file->tunnels))
-         (*valves->tunnels* (tunnels->hash-table))
-         (*all-paths* (compute-all-paths))
-         (*valve-count* (count-if #'(lambda (tunnel) (not (zerop (tunnel-rate tunnel)))) *tunnels*))
-         (*max-flow* 0)
-         (*max-minutes* 30))
-
-    (compute-scores nil)
-    *max-flow*))
+  (play-game 30 (curry #'compute-scores 'aa 1)))
 
 (defun part-2 ()
-  (let* ((*tunnels* (file->tunnels))
-         (*valves->tunnels* (tunnels->hash-table))
-         (*all-paths* (compute-all-paths))
-         (*valve-count* (count-if #'(lambda (tunnel) (not (zerop (tunnel-rate tunnel)))) *tunnels*))
-         (*max-flow* 0)
-         (*max-minutes* 26))
-
-    (compute-scores-two nil)
-    *max-flow*))
-
+  (play-game 26 (curry #'compute-scores-2 :man 'aa 1 'aa 1)))
