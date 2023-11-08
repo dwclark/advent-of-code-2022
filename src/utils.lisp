@@ -1,7 +1,7 @@
 (defpackage :utils
   (:use :cl)
   (:export #:read-file #:read-day-file #:split-blank-lines #:read-blank-line-blocks #:day-file-name
-           #:*input-directory* #:read-lists-of-symbols
+           #:*input-directory* #:read-lists-of-symbols #:print-assert
            #:bit-vector->integer #:integer->bit-vector #:power-set #:range-overlap-p
            #:*to-add/8*))
 
@@ -139,3 +139,7 @@
 (defun range-overlap-p (one two)
   (or (<= (car one) (car two) (cdr one))
       (<= (car one) (cdr two) (cdr one))))
+
+(defun print-assert (prefix result should-be)
+  (assert (equal result should-be))
+  (format t "~A ~A~%" prefix result))
