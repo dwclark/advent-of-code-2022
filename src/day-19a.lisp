@@ -5,6 +5,12 @@
   (:export #:exec))
 (in-package :day-19a)
 
+(defvar *blueprint* nil)
+(defvar *max-ore* nil)
+(defvar *max-clay* nil)
+(defvar *max-obsidian* nil)
+(defvar *max-elements* nil)
+(defvar *num-days* 0)
 (defvar *seen* nil)
 (defvar *best-so-far* nil)
 
@@ -20,46 +26,56 @@
 			  :obsidian (cons o4-obs c4-obs)
 			  :geode (cons o4-geo obs4-geo))))
 
+(defun with-blueprint (blueprint num-days func)
+  (let* ((*blueprint* blueprint)
+	 (*num-days* num-days)
+	 (*max-ore* (max (gethash :ore *blueprint*) (gethash :clay *blueprint*)
+			 (car (gethash :obsidian *blueprint*)) (car (gethash :geode *blueprint*))))
+	 (*max-clay* (cdr (gethash :obsidian *blueprint*)))
+	 (*max-obsidian* (cdr (gethash :geode *blueprint*)))
+	 (*max-elements* (list *max-ore* *max-clay* *max-obsidian* most-positive-fixnum)))
+    (funcall func)))
+
 (defmacro with-state-vars (the-state &body body)
   `(destructuring-bind (day (r-ore r-clay r-obsidian r-geode) (ore clay obsidian geode)) ,the-state
      ,@body))
 
-(defun buy-nothing (blueprint state)
-  (declare (ignore blueprint))
+(defun buy-nothing (state)
   (with-state-vars state
     (state (1+ day)
 	   (elements r-ore r-clay r-obsidian r-geode)
 	   (elements (+ ore r-ore) (+ clay r-clay) (+ obsidian r-obsidian) (+ geode r-geode)))))
 
-(defun buy-ore (blueprint state)
-  (let ((need (gethash :ore blueprint)))
+(defun buy-ore (state)
+  (let ((need (gethash :ore *blueprint*)))
     (with-state-vars state
-      (if (<= need ore)
+      (if (and (<= need ore) (< r-ore *max-ore*))
 	  (state (1+ day)
 		 (elements (1+ r-ore) r-clay r-obsidian r-geode)
 		 (elements (- (+ ore r-ore) need) (+ clay r-clay) (+ obsidian r-obsidian) (+ geode r-geode)))
 	  nil))))
 
-(defun buy-clay (blueprint state)
-  (let ((need (gethash :clay blueprint)))
+(defun buy-clay (state)
+  (let ((need (gethash :clay *blueprint*)))
     (with-state-vars state
-      (if (<= need ore)
+      (if (and (<= need ore) (< r-clay *max-clay*))
 	  (state (1+ day)
 		 (elements r-ore (1+ r-clay) r-obsidian r-geode)
 		 (elements (- (+ ore r-ore) need) (+ clay r-clay) (+ obsidian r-obsidian) (+ geode r-geode)))
 	  nil))))
 
-(defun buy-obsidian (blueprint state)
-  (destructuring-bind (need-ore . need-clay) (gethash :obsidian blueprint)
+(defun buy-obsidian (state)
+  (destructuring-bind (need-ore . need-clay) (gethash :obsidian *blueprint*)
     (with-state-vars state
-      (if (and (<= need-ore ore) (<= need-clay clay))
+      (if (and (and (<= need-ore ore) (<= need-clay clay))
+	       (< r-obsidian *max-obsidian*))
 	  (state (1+ day)
 		 (elements r-ore r-clay (1+ r-obsidian) r-geode)
 		 (elements (- (+ ore r-ore) need-ore) (- (+ clay r-clay) need-clay) (+ obsidian r-obsidian) (+ geode r-geode)))
 	  nil))))
 
-(defun buy-geode (blueprint state)
-  (destructuring-bind (need-ore . need-obsidian) (gethash :geode blueprint)
+(defun buy-geode (state)
+  (destructuring-bind (need-ore . need-obsidian) (gethash :geode *blueprint*)
     (with-state-vars state
       (if (and (<= need-ore ore) (<= need-obsidian obsidian))
 	  (state (1+ day)
@@ -82,14 +98,15 @@
 	tmp
 	(car (last tmp))))) 
 
-(defun key (state) (cons (day state) (robots state)))
+(defun key (state)
+  (cons (day state) (mapcar #'min (robots state) *max-elements*)))
 
 (defun prune-p (state)
   (let* ((current-geodes (geode state))
 	 (key (key state))
 	 (val (bank state))
 	 (found (gethash key *seen*))
-	 (max-possible-geodes (loop for i from current-geodes to (+ current-geodes (- 24 (day state)))
+	 (max-possible-geodes (loop for i from current-geodes to (+ current-geodes (- *num-days* (day state)))
 				    summing i)))
 
     (if (and found (elements<= val found))
@@ -100,17 +117,7 @@
 	t
 	nil)))
 
-(defun test ()
-  (assert (equal (state 25 (elements 1 4 2 2) (elements 6 41 8 9))
-		 (buy-nothing nil (state 24 (elements 1 4 2 2) (elements 5 37 6 7)))))
-  (assert (equal (buy-geode (blueprint 1 4 2 3 14 2 7)
-			    (state 21 (elements 1 4 2 1) (elements 4 25 7 2)))
-		 (state 22 (elements 1 4 2 2) (elements 3 29 2 3)))) 
-
-  )
-  
-
-(defun find-max (blueprint)
+(defun find-max ()
   (let ((*best-so-far* 0)
 	(*seen* (make-hash-table :test #'equal)))
     (loop with stack = (list (state 0 (elements 1 0 0 0) (elements 0 0 0 0)))
@@ -121,10 +128,10 @@
 	       (if (< *best-so-far* geode)
 		   (setf *best-so-far* geode))
 	       
-	       (if (and (< day 24)
+	       (if (and (< day *num-days*)
 			(not (prune-p current)))
 		   (loop for func in (list #'buy-nothing #'buy-ore #'buy-clay #'buy-obsidian #'buy-geode)
-			 do (let ((next-state (funcall func blueprint current)))
+			 do (let ((next-state (funcall func current)))
 			      (if next-state
 				  (push next-state stack))))))
 	  finally (return *best-so-far*))))
@@ -133,6 +140,17 @@
   (let ((numbers (mapcar #'parse-integer (cl-ppcre:all-matches-as-strings "[0-9]+" line))))
     (apply #'blueprint numbers)))
 
+(defun part-1 (blueprints num-days)
+  (loop for blueprint in blueprints
+	summing (with-blueprint blueprint num-days
+		  #'(lambda () (* (id blueprint) (find-max))))))
+
+(defun part-2 (blueprints num-days)
+  (apply #'* (loop for blueprint in (subseq blueprints 0 3)
+		   collecting (with-blueprint blueprint num-days #'find-max))))
+
 (defun exec ()
-  (loop for blueprint in (mapcar #'parse-line (read-day-file "19"))
-	summing (* (id blueprint) (find-max blueprint))))
+  (let ((blueprints (mapcar #'parse-line (read-day-file "19"))))
+    (print-assert "Part 1:" (part-1 blueprints 24) 1115)
+    (print-assert "Part 2:" (part-2 blueprints 32) 25056)))
+
