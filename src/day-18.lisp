@@ -79,7 +79,8 @@
 				 (if (air-pocket-p cube limits)
 				     (setf (gethash cube ret) t)))))
 	  finally (return ret))))
-			    
+
+;; TODO: implement flood fill solution, looks simpler and faster
 (defun exec ()
   (let* ((list-cubes (mapcar #'(lambda (line)
 				 (map 'vector #'parse-integer (split-sequence #\, line :test #'char=))) (read-day-file "18")))
