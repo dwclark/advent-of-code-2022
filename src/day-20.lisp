@@ -10,55 +10,11 @@
   (previous nil)
   (next nil))
 
-(defun equal-node (n1 n2)
-  (and (= (val n1) (val n2))
-       (= (original n1) (original n2))))
+(defun val-p (v)
+  (lambda (n) (= v (val n))))
 
-(defun to-string (n)
-  (format nil "(~A ~A)" (val n) (original n)))
-
-(defun print-nodes (s-node)
-  (format t "~A " (to-string s-node))
-  (loop for n = (next s-node) then (next n)
-	while (not (eq n s-node))
-	do (format t "~A " (to-string n))
-	finally (format t "~%")))
-
-(defun swap-prev (n)
-  (rotatef (val (previous n)) (val n))
-  (rotatef (original (previous n)) (original n)))
-
-(defun swap-next (n)
-  (rotatef (val (next n)) (val n))
-  (rotatef (original (next n)) (original n)))
-
-(defun find-node (nodes data &optional (data-func #'original) (by 0))
-  (let ((node (find-if #'(lambda (n) (= (funcall data-func n) data)) nodes)))
-    (if (not (zerop by))
-	(loop with moves = (rem by (length nodes))
-	      with func = (if (< moves 0) #'previous #'next)
-	      repeat (abs moves)
-	      do (setf node (funcall func node))))
-    node))
-
-(defun move-node (s-node len &optional (use-rem t) (by (val s-node)))
-  (let* ((n-func (if (plusp by) #'next #'previous))
-	 (s-func (if (plusp by) #'swap-next #'swap-prev))
-	 (abs-val (abs by))
-	 (remainder (if use-rem (rem abs-val len) abs-val))
-	 (divisions (if use-rem (floor (/ abs-val len)) abs-val))
-	 (times (+ remainder divisions)))
-    (if (zerop times)
-	(return-from move-node))
-    
-    (loop repeat times
-	  for n = s-node then (funcall n-func n)
-	  do (funcall s-func n))))
-
-(defun move-all-nodes (nodes)
-  (loop with len = (length nodes)
-	for pos from 0 below len
-	do (move-node (find-node nodes pos) len)))
+(defun original-p (o)
+  (lambda (n) (= o (original n))))
 
 (defun load-all ()
   (let ((nodes (loop for line in (read-day-file "20")
@@ -74,18 +30,56 @@
 	  (next (car (last nodes))) (first nodes))
     nodes))
 
-(defun part-1 (nodes)
-  (move-all-nodes nodes)
-  (reduce #'+ (mapcar #'(lambda (by)
-			  (val (find-node nodes 0 by #'val))) (list 1000 2000 3000))))
-  
-(defun exec ()
-  (let ((nodes (load-all)))
-    ;(loop for i from 0 below 20
-    (let ((copy-1 (load-all))
-	  (copy-2 (load-all))
-	  (value (val (nth 1 nodes))))
-      (move-node (nth 1 copy-1) (length nodes) nil)
-      (move-node (nth 1 copy-2) (length nodes) t)
-      (format t "~A; ~A: are equal: ~A~%" 1 value (every #'equal-node copy-1 copy-2)))))
+(defun splice-out (n)
+  (setf (next (previous n)) (next n)
+	(previous (next n)) (previous n)))
 
+(defun move-positive (n by)
+  (splice-out n)
+  (loop repeat by
+	do (setf (next n) (next (next n))))
+
+  (let* ((new-next (next n))
+	 (new-prev (previous new-next)))
+    (setf (previous new-next) n
+	  (previous n) new-prev
+	  (next new-prev) n)))
+
+(defun move-negative (n by)
+  (splice-out n)
+  (loop repeat by
+	do (setf (previous n) (previous (previous n))))
+  
+  (let* ((new-prev (previous n))
+	 (new-next (next new-prev)))
+    (setf (next new-prev) n
+	  (next n) new-next
+	  (previous new-next) n)))
+
+(defun move-node (n len)
+  (let* ((the-val (val n))
+	 (moves (rem the-val (1- len))))
+    (if (plusp moves) (move-positive n moves))
+    (if (minusp moves) (move-negative n (abs moves)))))
+
+(defun n-from-zero (nodes count)
+  (loop for n = (find-if (val-p 0) nodes) then (next n)
+	repeat count
+	finally (return n)))
+
+(defun grove-coords-sum (nodes)
+  (reduce #'+ (mapcar #'(lambda (num) (val (n-from-zero nodes num))) '(1000 2000 3000))))
+
+(defun exec-part (multiply-by times)
+  (let* ((nodes (loop with nodes = (load-all)
+		      for n in nodes do (setf (val n) (* multiply-by (val n)))
+		      finally (return nodes)))
+	 (len (length nodes)))
+    (loop repeat times
+	  do (loop for i from 0 below len
+		   do (move-node (find-if (original-p i) nodes) len))
+	  finally (return (grove-coords-sum nodes)))))
+
+(defun exec ()
+  (print-assert "Part 1:" (exec-part 1 1) 16533)
+  (print-assert "Part 2:" (exec-part 811589153 10) 4789999181006))
