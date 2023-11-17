@@ -64,5 +64,6 @@
   (let ((*op-table* (load-all)))
     (print-assert "Part 1:" (run (find-ins 'root)) 75147370123646)
     (setf (gethash 'humn *op-table*) nil)
+    ;21718827469549 is what the vlzj branch evaluates to
     (print-assert "Part 2:" (transform-solve 21718827469549 (find-ins 'rnsd)) 3423279932937)))
 
