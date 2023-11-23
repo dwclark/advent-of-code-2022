@@ -26,6 +26,9 @@
     (R (case compass (:north :east) (:east :south) (:south :west) (:west :north)))
     (L (case compass (:north :west) (:west :south) (:south :east) (:east :north)))))
 
+(defun opposite (compass)
+  (rotate 'R (rotate 'R compass)))
+
 (defun side (grid-coord compass) (cons grid-coord compass))
 (defun side-coord (s) (car s))
 (defun side-compass (s) (cdr s))
@@ -33,27 +36,6 @@
 (defun add-connection (dict s1 s2)
   (setf (gethash s1 dict) s2)
   (setf (gethash s2 dict) s1))
-
-(defun p1-sample-connections ()
-  (let ((dict (make-hash-table :test 'equal)))
-    (add-connection dict (side (coord 0 2) :north) (side (coord 2 2) :south))
-    (add-connection dict (side (coord 0 2) :east) (side (coord 0 2) :west))
-    (add-connection dict (side (coord 0 2) :south) (side (coord 1 2) :north))
-
-    (add-connection dict (side (coord 1 0) :north) (side (coord 1 0) :south))
-    (add-connection dict (side (coord 1 0) :east) (side (coord 1 1) :west))
-    (add-connection dict (side (coord 1 0) :west) (side (coord 1 2) :east))
-
-    (add-connection dict (side (coord 1 1) :north) (side (coord 1 1) :south))
-    (add-connection dict (side (coord 1 1) :east) (side (coord 1 2) :west))
-
-    (add-connection dict (side (coord 1 2) :south) (side (coord 2 2) :north))
-
-    (add-connection dict (side (coord 2 2) :east) (side (coord 2 3) :west))
-    (add-connection dict (side (coord 2 2) :west) (side (coord 2 3) :east))
-`
-    (add-connection dict (side (coord 2 3) :north) (side (coord 2 3) :south))
-    dict))
 
 (defstruct (mega-grid (:conc-name nil))
   (original-rows 0)
@@ -71,8 +53,9 @@
 (defun score (p)
   (let ((the-row (+ 1 (* (square-size *mega-grid*) (row (mega-coord p))) (row (sub-coord p))))
 	(the-col (+ 1 (* (square-size *mega-grid*) (col (mega-coord p))) (col (sub-coord p))))
-	(dir-score (ecase (compass p) (:east 0) (:south 1) (:west 2) (:north 3))))
-    (+ (* 1000 the-row) (* 4 the-col) dir-score)))
+	(facing (ecase (compass p) (:east 0) (:south 1) (:west 2) (:north 3))))
+    (format t "score row: ~A, col: ~A, facing: ~A" the-row the-col facing)
+    (+ (* 1000 the-row) (* 4 the-col) facing)))
 
 (defvar *mega-grid* nil)
 (defvar *connections* nil)
@@ -81,26 +64,44 @@
   (and (<= 0 (row sub-coord) (1- (square-size *mega-grid*)))
        (<= 0 (col sub-coord) (1- (square-size *mega-grid*)))))
 
-(defun next-sub (square-size person next)
-  (let ((prev (compass person))
-	(sub (sub-coord person)))
-    (ecase prev
-      (:north (ecase next
-		(:south (coord (1- square-size) (col sub)))))
-      (:south (ecase next
-		(:north (coord 0 (col sub)))))
-      (:east (ecase next
-	       (:west (coord (row sub) 0))))
-      (:west (ecase next
-	       (:east (coord (row sub) (1- square-size))))))))
+(defun next-sub (square-size prev-edge next-edge sub-coord)
+  (let ((the-row (row sub-coord))
+	(the-col (col sub-coord))
+	(the-max (1- square-size)))
+    (ecase prev-edge
+      (:north (ecase next-edge
+		(:north (coord 0 (- the-max the-col)))
+		(:east (coord (- the-max the-col) the-max))
+		(:south (coord the-max the-col))
+		(:west (coord the-col 0))))
+      (:south (ecase next-edge
+		(:south (coord the-row (- the-max the-col)))
+		(:east (coord the-col the-max))
+		(:north (coord 0 the-col))
+		(:west (coord (- the-max the-col) 0))))
+      (:east (ecase next-edge
+	       (:north (coord 0 (- the-max the-row)))
+	       (:west (coord the-row 0))
+	       (:south (coord the-max the-row))
+	       (:east (coord (- the-max the-row) the-max))))
+       (:west (ecase next-edge
+		(:west (coord (- the-max the-row) 0))
+		(:north (coord 0 the-row))
+		(:east (coord the-row the-max))
+		(:south (coord the-max (- the-max the-row))))))))
+
+(defun test-next-sub ()
+  (assert (coord= (coord 0 4) (next-sub 6 :north :north (coord 0 1))))
+  (assert (coord= (coord 4 5) (next-sub 6 :north :east (coord 0 1))))
+  )
 
 (defun switch-mega (person)
   (let* ((next-side (gethash (side (mega-coord person) (compass person)) *connections*))
 	 (next-mega-coord (side-coord next-side))
 	 (next-border (side-compass next-side))
-	 (next-sub (next-sub (square-size *mega-grid*) person next-border)))
+	 (next-sub (next-sub (square-size *mega-grid*) (compass person) next-border (sub-coord person))))
     (assert next-sub)
-    (values next-mega-coord next-sub (compass person))))
+    (values next-mega-coord next-sub (opposite next-border))))
 
 (defun next-position (person)
   (let ((try-sub-coord (coord+ (compass->move (compass person)) (sub-coord person))))
@@ -186,15 +187,67 @@
     
     *mega-grid*))
 
-(defun load-file (square-size)
-  (let* ((lines (read-day-file "22")))
+(defun load-file (square-size &optional (day "22"))
+  (let* ((lines (read-day-file day)))
     (destructuring-bind (grid-lines direction-line) (parse-lines lines)
       (values (parse-directions direction-line) (grid-of-grids square-size grid-lines)))))
 
+(defun p1-sample-connections ()
+  (let ((dict (make-hash-table :test 'equal)))
+    (add-connection dict (side (coord 0 2) :north) (side (coord 2 2) :south))
+    (add-connection dict (side (coord 0 2) :east) (side (coord 0 2) :west))
+    (add-connection dict (side (coord 0 2) :south) (side (coord 1 2) :north))
+
+    (add-connection dict (side (coord 1 0) :north) (side (coord 1 0) :south))
+    (add-connection dict (side (coord 1 0) :east) (side (coord 1 1) :west))
+    (add-connection dict (side (coord 1 0) :west) (side (coord 1 2) :east))
+
+    (add-connection dict (side (coord 1 1) :north) (side (coord 1 1) :south))
+    (add-connection dict (side (coord 1 1) :east) (side (coord 1 2) :west))
+
+    (add-connection dict (side (coord 1 2) :south) (side (coord 2 2) :north))
+
+    (add-connection dict (side (coord 2 2) :east) (side (coord 2 3) :west))
+    (add-connection dict (side (coord 2 2) :west) (side (coord 2 3) :east))
+`
+    (add-connection dict (side (coord 2 3) :north) (side (coord 2 3) :south))
+    dict))
+
+(defun p2-sample-connections ()
+  (let ((dict (make-hash-table :test 'equal)))
+    (add-connection dict (side (coord 0 2) :north) (side (coord 1 0) :north))
+    (add-connection dict (side (coord 0 2) :east) (side (coord 2 3) :east))
+    (add-connection dict (side (coord 0 2) :south) (side (coord 1 2) :north))
+    (add-connection dict (side (coord 0 2) :west) (side (coord 1 1) :north))
+
+    (add-connection dict (side (coord 1 0) :east) (side (coord 1 1) :west))
+    (add-connection dict (side (coord 1 0) :west) (side (coord 2 3) :south))
+    (add-connection dict (side (coord 1 0) :south) (side (coord 2 2) :south))
+
+    (add-connection dict (side (coord 1 1) :east) (side (coord 1 2) :west))
+    (add-connection dict (side (coord 1 1) :south) (side (coord 2 2) :west))
+
+    (add-connection dict (side (coord 1 2) :east) (side (coord 2 3) :north))
+
+    (add-connection dict (side (coord 2 2) :east) (side (coord 2 3) :west))
+    dict))
+
 (defun sample-1 ()
-  (multiple-value-bind (instructions mega-grid) (load-file 4)
+  (multiple-value-bind (instructions mega-grid) (load-file 4 "22s")
     (let ((*mega-grid* mega-grid)
 	  (*connections* (p1-sample-connections))
+	  (person (make-person :mega-coord (coord 0 2) :sub-coord (coord 0 0) :compass :east)))
+      (loop for ins in instructions
+	    do (progn (setf person (if (symbolp ins)
+				       (turn-person ins person)
+				       (move-person ins person)))
+		      (format t "~A~%" person))
+	    finally (return (score person))))))
+
+(defun sample-2 ()
+  (multiple-value-bind (instructions mega-grid) (load-file 4 "22s")
+    (let ((*mega-grid* mega-grid)
+	  (*connections* (p2-sample-connections))
 	  (person (make-person :mega-coord (coord 0 2) :sub-coord (coord 0 0) :compass :east)))
       (loop for ins in instructions
 	    do (progn (setf person (if (symbolp ins)
@@ -225,11 +278,56 @@
 
     dict))
 
+(defun p2-connections ()
+  (let ((dict (make-hash-table :test 'equal)))
+    (add-connection dict (side (coord 0 1) :north) (side (coord 3 0) :west))
+    (add-connection dict (side (coord 0 1) :west) (side (coord 2 0) :west))
+    (add-connection dict (side (coord 0 1) :south) (side (coord 1 1) :north))
+    (add-connection dict (side (coord 0 1) :east) (side (coord 0 2) :west))
+
+    (add-connection dict (side (coord 0 2) :north) (side (coord 3 0) :south))
+    (add-connection dict (side (coord 0 2) :west) (side (coord 0 1) :east))
+    (add-connection dict (side (coord 0 2) :south) (side (coord 1 1) :east))
+    (add-connection dict (side (coord 0 2) :east) (side (coord 2 1) :east))
+
+    (add-connection dict (side (coord 1 1) :north) (side (coord 0 1) :south))
+    (add-connection dict (side (coord 1 1) :west) (side (coord 2 0) :north))
+    (add-connection dict (side (coord 1 1) :east) (side (coord 0 2) :south))
+    (add-connection dict (side (coord 1 1) :south) (side (coord 2 1) :north))
+
+    (add-connection dict (side (coord 2 0) :north) (side (coord 1 1) :west))
+    (add-connection dict (side (coord 2 0) :west) (side (coord 0 1) :west))
+    (add-connection dict (side (coord 2 0) :east) (side (coord 2 1) :west))
+    (add-connection dict (side (coord 2 0) :south) (side (coord 3 0) :north))
+
+    (add-connection dict (side (coord 2 1) :north) (side (coord 1 1) :south))
+    (add-connection dict (side (coord 2 1) :west) (side (coord 2 0) :east))
+    (add-connection dict (side (coord 2 1) :east) (side (coord 0 2) :east))
+    (add-connection dict (side (coord 2 1) :south) (side (coord 3 0) :east))
+
+    (add-connection dict (side (coord 3 0) :north) (side (coord 2 0) :south))
+    (add-connection dict (side (coord 3 0) :west) (side (coord 0 1) :north))
+    (add-connection dict (side (coord 3 0) :east) (side (coord 2 1) :south))
+    (add-connection dict (side (coord 3 0) :south) (side (coord 0 2) :north))
+    dict))
+
 
 (defun part-1 ()
   (multiple-value-bind (instructions mega-grid) (load-file 50)
     (let ((*mega-grid* mega-grid)
 	  (*connections* (p1-connections))
+	  (person (make-person :mega-coord (coord 0 1) :sub-coord (coord 0 0) :compass :east)))
+      (loop for ins in instructions
+	    do (progn (setf person (if (symbolp ins)
+				       (turn-person ins person)
+				       (move-person ins person)))
+		      (format t "~A~%" person))
+	    finally (return (score person))))))
+
+(defun part-2 ()
+  (multiple-value-bind (instructions mega-grid) (load-file 50)
+    (let ((*mega-grid* mega-grid)
+	  (*connections* (p2-connections))
 	  (person (make-person :mega-coord (coord 0 1) :sub-coord (coord 0 0) :compass :east)))
       (loop for ins in instructions
 	    do (progn (setf person (if (symbolp ins)
