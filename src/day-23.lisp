@@ -69,45 +69,31 @@
 	  summing (loop for col from min-col to max-col
 			counting (not (gethash (coord row col) grid))))))
 
-(defun run-round (start-grid round)
-  (loop with current-grid = start-grid
-	with checks = (round-checks round)
+(defun run-round (grid round)
+  (loop with checks = (round-checks round)
 	with proposals = (make-hash-table :test 'equal)
 	with proposal-counts = (make-hash-table :test 'equal)
-	for coor being the hash-keys in current-grid
-	do (when (does-something-p current-grid coor)
-	     (let ((proposed (find-proposal current-grid checks coor)))
+	for coor being the hash-keys in grid
+	do (when (does-something-p grid coor)
+	     (let ((proposed (find-proposal grid checks coor)))
 	       (when proposed
 		 (setf (gethash coor proposals) proposed)
 		 (incf (gethash proposed proposal-counts 0)))))
-	finally (loop with next-grid = (make-hash-table :test 'equal)
-		      for coor being the hash-keys in current-grid
-		      do (let ((proposed (gethash coor proposals)))
-			   (if (and proposed (= 1 (gethash proposed proposal-counts)))
-			       (setf (gethash proposed next-grid) t)
-			       (setf (gethash coor next-grid) t)))
-		      finally (return next-grid))))
+	finally (return (loop with next-grid = (make-hash-table :test 'equal)
+			      with changes = 0
+			      for coor being the hash-keys in grid
+			      do (let ((proposed (gethash coor proposals)))
+				   (if (and proposed (= 1 (gethash proposed proposal-counts)))
+				       (setf (gethash proposed next-grid) t
+					     changes (1+ changes))
+				       (setf (gethash coor next-grid) t)))
+			      finally (return (values next-grid changes))))))
 
 (defun run (start-grid rounds)
   (loop with current-grid = start-grid
 	for round from 0 below rounds
-	do (loop with checks = (round-checks round)
-		 with proposals = (make-hash-table :test 'equal)
-		 with proposal-counts = (make-hash-table :test 'equal)
-		 for coor being the hash-keys in current-grid
-		 do (when (does-something-p current-grid coor)
-		      (let ((proposed (find-proposal current-grid checks coor)))
-			(when proposed
-			  (setf (gethash coor proposals) proposed)
-			  (incf (gethash proposed proposal-counts 0)))))
-		 finally (loop with next-grid = (make-hash-table :test 'equal)
-			       for coor being the hash-keys in current-grid
-			       do (let ((proposed (gethash coor proposals)))
-				    (if (and proposed (= 1 (gethash proposed proposal-counts)))
-					(setf (gethash proposed next-grid) t)
-					(setf (gethash coor next-grid) t)))
-			       finally (setf current-grid next-grid)))
-	   finally (return current-grid)))
+	do (setf current-grid (run-round current-grid round))
+	finally (return current-grid)))
 
 (defun sample-1 ()
   (let ((grid (parse-grid "23s")))
@@ -116,3 +102,21 @@
 (defun part-1 ()
   (let ((grid (parse-grid "23")))
     (empty-spaces (run grid 10))))
+
+(defun sample-2 ()
+  (loop with grid = (parse-grid "23s")
+	for round from 0
+	do (multiple-value-bind (tmp-grid changes) (run-round grid round)
+	     (if (zerop changes)
+		 (return (1+ round))
+		 (setf grid tmp-grid)))))
+
+(defun part-2 ()
+  (loop with grid = (parse-grid "23")
+	for round from 0
+	do (multiple-value-bind (tmp-grid changes) (run-round grid round)
+	     (if (zerop changes)
+		 (return (1+ round))
+		 (setf grid tmp-grid)))))
+	  
+    
