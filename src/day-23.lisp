@@ -89,27 +89,11 @@
 				       (setf (gethash coor next-grid) t)))
 			      finally (return (values next-grid changes))))))
 
-(defun run (start-grid rounds)
-  (loop with current-grid = start-grid
-	for round from 0 below rounds
-	do (setf current-grid (run-round current-grid round))
-	finally (return current-grid)))
-
-(defun sample-1 ()
-  (let ((grid (parse-grid "23s")))
-    (empty-spaces (run grid 10))))
-
 (defun part-1 ()
-  (let ((grid (parse-grid "23")))
-    (empty-spaces (run grid 10))))
-
-(defun sample-2 ()
-  (loop with grid = (parse-grid "23s")
-	for round from 0
-	do (multiple-value-bind (tmp-grid changes) (run-round grid round)
-	     (if (zerop changes)
-		 (return (1+ round))
-		 (setf grid tmp-grid)))))
+  (loop with current-grid = (parse-grid "23")
+	for round from 0 below 10
+	do (setf current-grid (run-round current-grid round))
+	finally (return (empty-spaces current-grid))))
 
 (defun part-2 ()
   (loop with grid = (parse-grid "23")
@@ -118,5 +102,7 @@
 	     (if (zerop changes)
 		 (return (1+ round))
 		 (setf grid tmp-grid)))))
-	  
-    
+
+(defun exec ()
+  (print-assert "Part 1:" (part-1) 3990)
+  (print-assert "Part 2:" (part-2) 1057))
