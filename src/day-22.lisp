@@ -2,7 +2,6 @@
   (:use :cl)
   (:import-from :utils :read-day-file :print-assert)
   (:import-from :cl-ppcre :do-register-groups)
-  (:import-from :alexandria :curry)
   (:export #:exec))
 (in-package :day-22)
 
@@ -54,7 +53,6 @@
   (let ((the-row (+ 1 (* (square-size *mega-grid*) (row (mega-coord p))) (row (sub-coord p))))
 	(the-col (+ 1 (* (square-size *mega-grid*) (col (mega-coord p))) (col (sub-coord p))))
 	(facing (ecase (compass p) (:east 0) (:south 1) (:west 2) (:north 3))))
-    (format t "score row: ~A, col: ~A, facing: ~A" the-row the-col facing)
     (+ (* 1000 the-row) (* 4 the-col) facing)))
 
 (defvar *mega-grid* nil)
@@ -89,11 +87,6 @@
 		(:north (coord 0 the-row))
 		(:east (coord the-row the-max))
 		(:south (coord the-max (- the-max the-row))))))))
-
-(defun test-next-sub ()
-  (assert (coord= (coord 0 4) (next-sub 6 :north :north (coord 0 1))))
-  (assert (coord= (coord 4 5) (next-sub 6 :north :east (coord 0 1))))
-  )
 
 (defun switch-mega (person)
   (let* ((next-side (gethash (side (mega-coord person) (compass person)) *connections*))
@@ -232,30 +225,6 @@
     (add-connection dict (side (coord 2 2) :east) (side (coord 2 3) :west))
     dict))
 
-(defun sample-1 ()
-  (multiple-value-bind (instructions mega-grid) (load-file 4 "22s")
-    (let ((*mega-grid* mega-grid)
-	  (*connections* (p1-sample-connections))
-	  (person (make-person :mega-coord (coord 0 2) :sub-coord (coord 0 0) :compass :east)))
-      (loop for ins in instructions
-	    do (progn (setf person (if (symbolp ins)
-				       (turn-person ins person)
-				       (move-person ins person)))
-		      (format t "~A~%" person))
-	    finally (return (score person))))))
-
-(defun sample-2 ()
-  (multiple-value-bind (instructions mega-grid) (load-file 4 "22s")
-    (let ((*mega-grid* mega-grid)
-	  (*connections* (p2-sample-connections))
-	  (person (make-person :mega-coord (coord 0 2) :sub-coord (coord 0 0) :compass :east)))
-      (loop for ins in instructions
-	    do (progn (setf person (if (symbolp ins)
-				       (turn-person ins person)
-				       (move-person ins person)))
-		      (format t "~A~%" person))
-	    finally (return (score person))))))
-
 (defun p1-connections ()
   (let ((dict (make-hash-table :test 'equal)))
     (add-connection dict (side (coord 0 1) :north) (side (coord 2 1) :south))
@@ -311,27 +280,35 @@
     (add-connection dict (side (coord 3 0) :south) (side (coord 0 2) :north))
     dict))
 
+(defun run (mega-grid instructions connections person)
+  (let ((*mega-grid* mega-grid)
+	(*connections* connections))
+    (loop for ins in instructions
+	  do (setf person (if (symbolp ins)
+				     (turn-person ins person)
+				     (move-person ins person)))
+	  finally (return (score person)))))
+
+(defun sample-1 ()
+  (multiple-value-bind (instructions mega-grid) (load-file 4 "22s")
+    (run mega-grid instructions (p1-sample-connections)
+	 (make-person :mega-coord (coord 0 2) :sub-coord (coord 0 0) :compass :east))))
+
+(defun sample-2 ()
+  (multiple-value-bind (instructions mega-grid) (load-file 4 "22s")
+    (run mega-grid instructions (p2-sample-connections)
+	 (make-person :mega-coord (coord 0 2) :sub-coord (coord 0 0) :compass :east))))
 
 (defun part-1 ()
   (multiple-value-bind (instructions mega-grid) (load-file 50)
-    (let ((*mega-grid* mega-grid)
-	  (*connections* (p1-connections))
-	  (person (make-person :mega-coord (coord 0 1) :sub-coord (coord 0 0) :compass :east)))
-      (loop for ins in instructions
-	    do (progn (setf person (if (symbolp ins)
-				       (turn-person ins person)
-				       (move-person ins person)))
-		      (format t "~A~%" person))
-	    finally (return (score person))))))
+    (run mega-grid instructions (p1-connections)
+	 (make-person :mega-coord (coord 0 1) :sub-coord (coord 0 0) :compass :east))))
 
 (defun part-2 ()
   (multiple-value-bind (instructions mega-grid) (load-file 50)
-    (let ((*mega-grid* mega-grid)
-	  (*connections* (p2-connections))
-	  (person (make-person :mega-coord (coord 0 1) :sub-coord (coord 0 0) :compass :east)))
-      (loop for ins in instructions
-	    do (progn (setf person (if (symbolp ins)
-				       (turn-person ins person)
-				       (move-person ins person)))
-		      (format t "~A~%" person))
-	    finally (return (score person))))))
+    (run mega-grid instructions (p2-connections)
+	 (make-person :mega-coord (coord 0 1) :sub-coord (coord 0 0) :compass :east))))
+
+(defun exec ()
+  (print-assert "Part 1:" (part-1) 27436)
+  (print-assert "Part 2:" (part-2) 15426))
