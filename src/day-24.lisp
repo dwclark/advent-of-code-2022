@@ -18,23 +18,21 @@ This day looks fun?? Some ideas for solving this madness:
   (:import-from :alexandria :curry)
   (:export #:exec))
 (in-package :day-24)
-
-(defun state (minutes row col) (vector minutes row col))
+(declaim (optimize (debug 3)))
+(defun state (minutes row col &optional (intermediates 0)) (vector minutes row col intermediates))
 (defun minutes (state &optional new-val)
   (if new-val
       (setf (aref state 0) new-val)
       (aref state 0)))
 (defun row (state) (aref state 1))
 (defun col (state) (aref state 2))
+(defun intermediates (state) (aref state 3))
+(defun intermediates++ (state) (incf (aref state 3)))
 (defun state+ (state move)
-  (vector (1+ (minutes state)) (+ (car move) (row state)) (+ (cdr move) (col state))))
-
-(defun state-key (state)
-  (list (mod (minutes state) *repeat-every*) (row state) (col state)))
-
-(defun index-cost (state index) (cons index (minutes state)))
-(defun index (ic) (car ic))
-(defun cost (ic) (cdr ic))
+  (state (1+ (minutes state))
+	 (+ (car move) (row state))
+	 (+ (cdr move) (col state))
+	 (intermediates state)))
 
 (defvar *grid* nil)
 (defvar *blizzard-height* 0)
@@ -45,6 +43,13 @@ This day looks fun?? Some ideas for solving this madness:
 (defvar *best-so-far* nil)
 
 (defparameter *possible-moves* (list (cons -1 0) (cons 1 0) (cons 0 -1) (cons 0 1) (cons 0 0)))
+
+(defun state-key (state)
+  (list (mod (minutes state) *repeat-every*) (row state) (col state) (intermediates state)))
+
+(defun index-cost (state index) (cons index (minutes state)))
+(defun index (ic) (car ic))
+(defun cost (ic) (cdr ic))
 
 (defun read-grid (day)
   (concatenate 'vector (read-day-file day)))
@@ -123,7 +128,7 @@ This day looks fun?? Some ideas for solving this madness:
 	     (decrease-key *states* (index ic) (minutes state))
 	     (setf (gethash key *index-cost-cache*) (index-cost state (index ic))))))))
     
-(defun solve (initial-state solved-p)
+(defun solve (initial-state solved-p update)
   (add-state initial-state)
   (loop for current = (pop-heap *states*) then (pop-heap *states*)
 	while current
@@ -134,7 +139,7 @@ This day looks fun?? Some ideas for solving this madness:
 		     (loop for move in *possible-moves*
 			   do (let ((possible (state+ current move)))
 				(if (legal-move-p possible)
-				    (add-state possible)))))))
+				    (add-state (funcall update possible))))))))
 	finally (return *best-so-far*)))
 
 (defun test-free-at-p (grid minutes)
@@ -163,10 +168,51 @@ This day looks fun?? Some ideas for solving this madness:
 			  "#..2.>2#" "#.<..>.#" "######.#") 11)
   )
 
+(defun solved-1 (final-row final-col)
+  (lambda (s)
+    (and (= (row s) final-row) (= (col s) final-col))))
+
 (defun sample-1 ()
-  (labels ((solved-p (s) (and (= (row s) 5) (= (col s) 6))))
-    (play-game (read-grid "24s") (curry #'solve (state 0 0 1) #'solved-p))))
-	     
+  (play-game (read-grid "24s")
+	     (curry #'solve (state 0 0 1) (solved-1 5 6) #'identity)))
+
 (defun part-1 ()
-  (labels ((solved-p (s) (and (= (row s) 36) (= (col s) 100))))
-    (play-game (read-grid "24") (curry #'solve (state 0 0 1) #'solved-p))))
+  (play-game (read-grid "24")
+	     (curry #'solve (state 0 0 1) (solved-1 36 100) #'identity)))
+
+(defun solved-2 (final-row final-col)
+  (lambda (s)
+    (and (= (row s) final-row) (= (col s) final-col) (= 3 (intermediates s)))))
+
+(defun set-intermediate (i-row i-col g-row g-col s)
+  (if s
+      (let ((row (row s))
+	    (col (col s))
+	    (intermediate (intermediates s)))
+	(cond ((and (or (zerop intermediate) (= 2 intermediate))
+		    (= row g-row)
+		    (= col g-col))
+	       (intermediates++ s))
+	      
+	      ((and (= 1 intermediate)
+		    (= row i-row)
+		    (= col i-col))
+	       (intermediates++ s)))))
+  s)
+
+(defun sample-2 ()
+  (play-game (read-grid "24s")
+	     (curry #'solve
+		    (state 0 0 1)
+		    (solved-2 5 6)
+		    (curry #'set-intermediate 0 1 5 6))))
+
+(defun part-2 ()
+  (play-game (read-grid "24")
+	     (curry #'solve
+		    (state 0 0 1)
+		    (solved-2 36 100)
+		    (curry #'set-intermediate 0 1 36 100))))
+
+	      
+  
