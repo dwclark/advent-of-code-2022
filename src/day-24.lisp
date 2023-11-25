@@ -123,20 +123,19 @@ This day looks fun?? Some ideas for solving this madness:
 	     (decrease-key *states* (index ic) (minutes state))
 	     (setf (gethash key *index-cost-cache*) (index-cost state (index ic))))))))
     
-(defun solve (i-row i-col g-row g-col)
-  (labels ((solved-p (s) (and (= (row s) g-row) (= (col s) g-col))))
-    (add-state (state 0 i-row i-col))
-    (loop for current = (pop-heap *states*) then (pop-heap *states*)
-	  while current
-	  do (let ((cur-minutes (minutes current)))
-	       (if (solved-p current)
-		   (setf *best-so-far* (min *best-so-far* cur-minutes))
-		   (if (< cur-minutes *best-so-far*)
-		       (loop for move in *possible-moves*
-			     do (let ((possible (state+ current move)))
-				  (if (legal-move-p possible)
-				      (add-state possible)))))))
-	  finally (return *best-so-far*))))
+(defun solve (initial-state solved-p)
+  (add-state initial-state)
+  (loop for current = (pop-heap *states*) then (pop-heap *states*)
+	while current
+	do (let ((cur-minutes (minutes current)))
+	     (if (funcall solved-p current)
+		 (setf *best-so-far* (min *best-so-far* cur-minutes))
+		 (if (< cur-minutes *best-so-far*)
+		     (loop for move in *possible-moves*
+			   do (let ((possible (state+ current move)))
+				(if (legal-move-p possible)
+				    (add-state possible)))))))
+	finally (return *best-so-far*)))
 
 (defun test-free-at-p (grid minutes)
     (loop for line across grid
@@ -165,8 +164,9 @@ This day looks fun?? Some ideas for solving this madness:
   )
 
 (defun sample-1 ()
-  (play-game (read-grid "24s") (curry #'solve 0 1 5 6)))
+  (labels ((solved-p (s) (and (= (row s) 5) (= (col s) 6))))
+    (play-game (read-grid "24s") (curry #'solve (state 0 0 1) #'solved-p))))
 	     
 (defun part-1 ()
-  (play-game (read-grid "24") (curry #'solve 0 1 36 100)))
-
+  (labels ((solved-p (s) (and (= (row s) 36) (= (col s) 100))))
+    (play-game (read-grid "24") (curry #'solve (state 0 0 1) #'solved-p))))
