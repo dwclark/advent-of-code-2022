@@ -1,16 +1,10 @@
-#|
-This day looks fun?? Some ideas for solving this madness:
-
-1) You don't really need to maintain all that state. Given the day and the initial position, you can always derive the current position of any given storm. It's just a combination of current day, original position, and a mod operation. This means that the entire state is just three values: current row, current column, and time step. In fact if you are really clever, you can severely limit the number of calculations by realizing that only a very small number of blizzards can affect the neighbor positions for any given day.
-
-2) Neighbor calculation: See #1 above. In this case neighbor calculation will be any of north, south, east, west, stay or the nil case, and that means the particular path can just be dropped. This will probably be key to trimming the state.
-
-3) A* seems feasible here. There's an obvious acceptable cost function, the manhattan distance. However, I don't know if A* can actually guarantee the best outcome since the grid is constantly changing (need to read more on A* to know for sure). If it can't then A* + BFS will give at least a plausible way to solve the problem by deprioritizing paths that are not making any advances. That plus playing all paths out until they are > than known solutions should guarantee an eventual solution.
-
-4) Board states will repeat every row * col cycles as every blizzard will have returned to their original position. This should allow further trimming of board states that are the same (mod time (* row col)). It's definitely the case that if you are in a position, but there exists a board with fewer minutes in the same state, you can drop the one with more minutes, it's not going to make progress faster than the one with lower minutes count. This probably means that a fibonacci heap is the best data structure for tracking states. It gives the ability to inspect past states so worse solutions can just be dropped. In theory better solutions can replace current ones, but with this graph it's kind of hard to see if that's even possible to know.
-
-5) Actually A* may just complicate things?? Don't know, I'm waffling.
-|#
+;;What ended up working:
+;;1) Don't maintain state, just calculate it. Then the only state you need are the number of minutes
+;;2) Maintain cache based on repeating every row * col cycles, make allowances for intermediate goals
+;;3) Make part-1 a special case of part-2, it just has no intermediate goals
+;;4) Do the simplest possible thing to track and update intermediate goals
+;;5) Don't bother with A*, not useful, probably not correct
+;;6) Keep functions small and welld defined
 (defpackage :day-24
   (:use :cl)
   (:import-from :utils :read-day-file :print-assert)
@@ -18,12 +12,14 @@ This day looks fun?? Some ideas for solving this madness:
   (:import-from :alexandria :curry)
   (:export #:exec))
 (in-package :day-24)
-(declaim (optimize (debug 3)))
+
 (defun state (minutes row col &optional (intermediates 0)) (vector minutes row col intermediates))
+
 (defun minutes (state &optional new-val)
   (if new-val
       (setf (aref state 0) new-val)
       (aref state 0)))
+
 (defun row (state) (aref state 1))
 (defun col (state) (aref state 2))
 (defun intermediates (state) (aref state 3))
@@ -45,7 +41,10 @@ This day looks fun?? Some ideas for solving this madness:
 (defparameter *possible-moves* (list (cons -1 0) (cons 1 0) (cons 0 -1) (cons 0 1) (cons 0 0)))
 
 (defun state-key (state)
-  (list (mod (minutes state) *repeat-every*) (row state) (col state) (intermediates state)))
+  (list (mod (minutes state) *repeat-every*)
+	(row state)
+	(col state)
+	(intermediates state)))
 
 (defun index-cost (state index) (cons index (minutes state)))
 (defun index (ic) (car ic))
@@ -142,32 +141,6 @@ This day looks fun?? Some ideas for solving this madness:
 				    (add-state (funcall update possible))))))))
 	finally (return *best-so-far*)))
 
-(defun test-free-at-p (grid minutes)
-    (loop for line across grid
-	  for row from 0
-	  do (loop for c across line
-		   for col from 0
-		   do (cond ((free-char-p c)
-			     (assert (free-at-p minutes row col)))
-			    ((blizzard-char-p c)
-			     (assert (not (free-at-p minutes row col))))))))
-
-(defun s-1 ()
-  (format t "h: ~A w: ~A ev: ~A~%" *blizzard-height* *blizzard-width* *repeat-every*)
-  (format t "dim ~A~%" (array-dimension *grid* 0))
-  (assert (free-at-p 100 0 1))
-  (assert (free-at-p most-positive-fixnum 5 6))
-  (test-free-at-p *grid* 0)
-  (test-free-at-p (vector "#.######" "#.>3.<.#" "#<..<<.#"
-			  "#>2.22.#" "#>v..^<#" "######.#") 1)
-  (test-free-at-p (vector "#.######" "#.2>2..#" "#.^22^<#"
-			  "#.>2.^>#" "#.>..<.#" "######.#") 2)
-  (test-free-at-p (vector "#.######" "#2.v.<>#" "#<.<..<#"
-			  "#.^>^22#" "#.2..2.#" "######.#") 5)
-  (test-free-at-p (vector "#.######" "#2^.^2>#" "#<v<.^<#"
-			  "#..2.>2#" "#.<..>.#" "######.#") 11)
-  )
-
 (defun solved-1 (final-row final-col)
   (lambda (s)
     (and (= (row s) final-row) (= (col s) final-col))))
@@ -213,6 +186,3 @@ This day looks fun?? Some ideas for solving this madness:
 		    (state 0 0 1)
 		    (solved-2 36 100)
 		    (curry #'set-intermediate 0 1 36 100))))
-
-	      
-  
