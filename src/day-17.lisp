@@ -178,3 +178,6 @@
 (defun part-2 ()
   (run-game "17" #'game-loop-2))
 
+(defun exec ()
+  (print-assert "Part 1:" (part-1) 3232)
+  (print-assert "Part 2:" (part-2) 1585632183915))
