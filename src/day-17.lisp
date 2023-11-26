@@ -119,9 +119,13 @@
     (loop with next-op = :continue
 	  with row = (+ (top-rock-line) (height rock) 3)
 	  with col = 3
+	  with jet = nil
+	  with jet-index = nil
 	  while (eq :continue next-op)
-	  do (multiple-value-bind (jet jet-index) (funcall jet-iter)
-	       (multiple-value-setq (next-op row col) (move-rock-round rock jet row col))))))
+	  do (progn
+	       (multiple-value-setq (jet jet-index) (funcall jet-iter))
+	       (multiple-value-setq (next-op row col) (move-rock-round rock jet row col)))
+	  finally (return (list :col col :rindex rock-index :jindex jet-index)))))
 
 (defun run-game (day func)
   (let ((*rocks* (new-rocks))
@@ -162,4 +166,28 @@
       (assert (= 3 row))
       (assert (= 2 col))
       (print-game))))
+
+(defun game-loop-2 ()
+  (loop with total = 1000000000000
+	with rock-iter = (new-iter *rocks*)
+	with jet-iter = (new-iter *jets*)
+	with cache = (make-hash-table :test #'equal)
+	while t
+	for step from 0
+	do (let ((rock (funcall rock-iter :peek t)))
+	     (fill-fresh-lines (fresh-lines-needed rock))
+	     (let* ((state (move-rock rock-iter jet-iter))
+		    (height (top-rock-line))
+		    (prev (gethash state cache)))
+	       (if prev
+		   (let* ((r-cycle (- step (getf prev :rock)))
+			  (h-cycle (- height (getf prev :height)))
+			  (diff (- total step 1)))
+		     (multiple-value-bind (more remain) (floor diff r-cycle)
+		       (if (zerop remain)
+			   (return-from game-loop-2 (+ (* h-cycle more) height)))))
+		   (setf (gethash state cache) (list :rock step :height height)))))))
+
+(defun part-2 ()
+  (run-game "17" #'game-loop-2))
 
