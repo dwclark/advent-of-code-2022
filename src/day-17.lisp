@@ -154,19 +154,6 @@
 (defun part-1 ()
   (run-game "17" (curry #'game-loop 2022)))
 
-(defun test-extreme ()
-  (let ((rock (vector 3 3 (vector ".#." "###" ".#.")))
-	(*column* (new-column (vector "|.......|"
-				      "|##.....|"
-				      "|#......|"
-				      "|##.....|"
-				      "---------"))))
-    (multiple-value-bind (action row col) (move-rock-round rock :left 3 3)
-      (assert (eq :stop action))
-      (assert (= 3 row))
-      (assert (= 2 col))
-      (print-game))))
-
 (defun game-loop-2 ()
   (loop with total = 1000000000000
 	with rock-iter = (new-iter *rocks*)
